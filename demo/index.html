@@ -111,7 +111,7 @@
             transition: width 0.3s ease;
         }
     </style>
-    <script src="../coi-serviceworker.js"></script>
+    <script src="./dist/coi-serviceworker.js"></script>
 </head>
 <body>
     <div class="container">
@@ -153,7 +153,7 @@
     
     <script type="module">
         // Import from the built distribution
-        import { WhisperTranscriber } from '../dist/index.esm.js';
+        import { WhisperTranscriber } from './dist/index.esm.js';
         
         let transcriber = null;
         
