@@ -46,11 +46,35 @@ export class WhisperTranscriber {
       onStatus: config.onStatus || (() => {}),
       debug: config.debug || false,
     };
+    
+    // Auto-register COI service worker if needed
+    this.registerServiceWorkerIfNeeded();
   }
 
   private log(message: string): void {
     if (this.config.debug) {
       console.log('[WhisperTranscriber]', message);
+    }
+  }
+  
+  private async registerServiceWorkerIfNeeded(): Promise<void> {
+    // Check if we need COI and service worker is available
+    if (!window.crossOriginIsolated && 'serviceWorker' in navigator) {
+      try {
+        // Check if COI_SERVICEWORKER_CODE is available (inlined version)
+        if ((window as any).COI_SERVICEWORKER_CODE) {
+          this.log('Registering inlined COI service worker...');
+          const swBlob = new Blob([(window as any).COI_SERVICEWORKER_CODE], { type: 'application/javascript' });
+          const swUrl = URL.createObjectURL(swBlob);
+          await navigator.serviceWorker.register(swUrl);
+          this.log('COI service worker registered successfully');
+          
+          // Reload the page to activate the service worker
+          window.location.reload();
+        }
+      } catch (error) {
+        this.log('Failed to register COI service worker: ' + error);
+      }
     }
   }
 
@@ -91,28 +115,33 @@ export class WhisperTranscriber {
   }
 
   private async loadWasmModule(): Promise<void> {
-    const basePath = this.getScriptBasePath();
-    
-    // Always pre-fetch the worker and create blob URL to avoid CORS issues
-    const workerUrl = basePath + 'libstream.worker.js';
-    try {
-      // Pre-fetch and convert worker to blob URL
-      const response = await fetch(workerUrl);
-      const workerCode = await response.text();
-      const blob = new Blob([workerCode], { type: 'application/javascript' });
-      const blobUrl = URL.createObjectURL(blob);
-      
-      // Store the blob URL for later use
-      (window as any).__whisperWorkerBlobUrl = blobUrl;
-      this.log('Worker script loaded and blob URL created');
-    } catch (error) {
-      this.log('Failed to pre-fetch worker: ' + error);
-      // Continue anyway, it might work with direct loading
+    // Check if we have inlined worker code
+    if ((window as any).LIBSTREAM_WORKER_CODE) {
+      // Use inlined worker
+      this.log('Using inlined worker code');
+      const workerBlob = new Blob([(window as any).LIBSTREAM_WORKER_CODE], { type: 'application/javascript' });
+      const workerBlobUrl = URL.createObjectURL(workerBlob);
+      (window as any).__whisperWorkerBlobUrl = workerBlobUrl;
+      this.log('Worker blob URL created from inlined code');
+    } else {
+      // Fallback to fetching worker
+      const basePath = this.getScriptBasePath();
+      const workerUrl = basePath + 'libstream.worker.js';
+      try {
+        // Pre-fetch and convert worker to blob URL
+        const response = await fetch(workerUrl);
+        const workerCode = await response.text();
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Store the blob URL for later use
+        (window as any).__whisperWorkerBlobUrl = blobUrl;
+        this.log('Worker script loaded and blob URL created');
+      } catch (error) {
+        this.log('Failed to pre-fetch worker: ' + error);
+        // Continue anyway, it might work with direct loading
+      }
     }
-    
-    // Load the WASM module dynamically
-    const script = document.createElement('script');
-    script.src = this.getScriptBasePath() + 'libstream.js';
     
     return new Promise((resolve, reject) => {
       // Configure Module before the script loads
@@ -156,21 +185,52 @@ export class WhisperTranscriber {
         }
       };
       
-      script.onerror = () => reject(new Error('Failed to load WASM module'));
-      document.head.appendChild(script);
+      
+      // Load the WASM module
+      if ((window as any).LIBSTREAM_CODE) {
+        // Use inlined libstream code
+        this.log('Using inlined libstream code');
+        const scriptBlob = new Blob([(window as any).LIBSTREAM_CODE], { type: 'application/javascript' });
+        const scriptUrl = URL.createObjectURL(scriptBlob);
+        const script = document.createElement('script');
+        script.src = scriptUrl;
+        script.onerror = () => reject(new Error('Failed to load WASM module'));
+        document.head.appendChild(script);
+      } else {
+        // Load the WASM module dynamically
+        const script = document.createElement('script');
+        script.src = this.getScriptBasePath() + 'libstream.js';
+        script.onerror = () => reject(new Error('Failed to load WASM module'));
+        document.head.appendChild(script);
+      }
     });
   }
 
   private async loadHelpers(): Promise<void> {
-    // Load helpers.js
-    const script = document.createElement('script');
-    script.src = this.getScriptBasePath() + 'helpers.js';
-    
-    return new Promise((resolve, reject) => {
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load helpers'));
-      document.head.appendChild(script);
-    });
+    if ((window as any).HELPERS_CODE) {
+      // Use inlined helpers code
+      this.log('Using inlined helpers code');
+      const scriptBlob = new Blob([(window as any).HELPERS_CODE], { type: 'application/javascript' });
+      const scriptUrl = URL.createObjectURL(scriptBlob);
+      const script = document.createElement('script');
+      script.src = scriptUrl;
+      
+      return new Promise((resolve, reject) => {
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load helpers'));
+        document.head.appendChild(script);
+      });
+    } else {
+      // Load helpers.js normally
+      const script = document.createElement('script');
+      script.src = this.getScriptBasePath() + 'helpers.js';
+      
+      return new Promise((resolve, reject) => {
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load helpers'));
+        document.head.appendChild(script);
+      });
+    }
   }
 
   private async loadCOIServiceWorker(): Promise<void> {

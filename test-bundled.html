@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Test Local NPM Package</title>
-    <script src="node_modules/whisper-web-transcriber/dist/coi-serviceworker.js"></script>
+    <title>Test Bundled Version</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -25,8 +24,9 @@
     </style>
 </head>
 <body>
-    <h1>Testing Local NPM Package</h1>
-    <p>This uses the locally installed npm package</p>
+    <h1>Testing Bundled Version (Single File)</h1>
+    <p>This version uses the bundled JavaScript with all workers inlined.</p>
+    <p>NO manual file copying required!</p>
     
     <div>
         <button id="load">Load Model</button>
@@ -44,12 +44,12 @@
         <div id="transcription">Transcribed text will appear here...</div>
     </div>
 
-    <script type="module">
-        import { WhisperTranscriber } from './node_modules/whisper-web-transcriber/dist/index.esm.js';
+    <!-- Only need this single script file! -->
+    <script src="dist/index.bundled.js"></script>
+    <script>
+        console.log('Testing bundled version...');
         
-        console.log('Loading from local node_modules...');
-        
-        const transcriber = new WhisperTranscriber({
+        const transcriber = new WhisperTranscriber.WhisperTranscriber({
             modelSize: 'tiny-en-q5_1',
             onTranscription: (text) => {
                 console.log('Transcribed:', text);
