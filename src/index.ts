@@ -78,7 +78,39 @@ export class WhisperTranscriber {
     return 'https://unpkg.com/whisper-web-transcriber/dist/';
   }
 
+  private async createWorkerFromURL(url: string): Promise<Worker> {
+    // Fetch the worker script
+    const response = await fetch(url);
+    const workerCode = await response.text();
+    
+    // Create a blob URL for the worker
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const blobUrl = URL.createObjectURL(blob);
+    
+    return new Worker(blobUrl);
+  }
+
   private async loadWasmModule(): Promise<void> {
+    const basePath = this.getScriptBasePath();
+    const isCDN = basePath.includes('unpkg.com');
+    
+    // If loading from CDN, pre-fetch the worker and create blob URL
+    if (isCDN) {
+      const workerUrl = basePath + 'libstream.worker.js';
+      try {
+        // Pre-fetch and convert worker to blob URL
+        const response = await fetch(workerUrl);
+        const workerCode = await response.text();
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Store the blob URL for later use
+        (window as any).__whisperWorkerBlobUrl = blobUrl;
+      } catch (error) {
+        this.log('Failed to pre-fetch worker: ' + error);
+      }
+    }
+    
     // Load the WASM module dynamically
     const script = document.createElement('script');
     script.src = this.getScriptBasePath() + 'libstream.js';
@@ -87,6 +119,10 @@ export class WhisperTranscriber {
       // Configure Module before the script loads
       (window as any).Module = {
         locateFile: (path: string) => {
+          // If it's the worker and we have a blob URL, use it
+          if (path === 'libstream.worker.js' && (window as any).__whisperWorkerBlobUrl) {
+            return (window as any).__whisperWorkerBlobUrl;
+          }
           return this.getScriptBasePath() + path;
         },
         onRuntimeInitialized: () => {

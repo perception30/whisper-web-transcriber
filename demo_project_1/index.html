@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Whisper Web Transcriber Demo</title>
+    <script src="coi-serviceworker.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -142,7 +143,7 @@
     </div>
 
     <script type="module">
-        import { WhisperTranscriber } from 'https://unpkg.com/whisper-web-transcriber@0.1.4/dist/index.esm.js';
+        import { WhisperTranscriber } from './index.esm.js';
         
         let transcriber = null;
         
