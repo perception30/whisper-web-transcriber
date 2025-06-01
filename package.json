@@ -53,5 +53,8 @@
   "bugs": {
     "url": "https://github.com/perception30/whisper-web-transcriber/issues"
   },
-  "homepage": "https://github.com/perception30/whisper-web-transcriber#readme"
+  "homepage": "https://github.com/perception30/whisper-web-transcriber#readme",
+  "dependencies": {
+    "whisper-web-transcriber": "^0.1.7"
+  }
 }
