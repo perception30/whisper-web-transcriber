@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisper Transcriber - Rollup Demo</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="coi-serviceworker.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ Whisper Transcriber</h1>
+        <p class="subtitle">Real-time speech to text with Rollup bundler</p>
+        
+        <div class="info-box" id="infoBox">
+            ℹ️ This demo uses Rollup bundler with automatic CORS headers configured.
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        
+        <div class="status-bar">
+            <span class="status-text" id="statusText">Initializing...</span>
+            <div class="status-indicator" id="statusIndicator"></div>
+        </div>
+        
+        <div class="model-selector">
+            <label for="modelSelect">Select Model:</label>
+            <select id="modelSelect">
+                <option value="tiny-en-q5_1">Tiny (31 MB) - Fastest</option>
+                <option value="base-en-q5_1" selected>Base (57 MB) - Balanced</option>
+                <option value="tiny.en">Tiny Original (75 MB)</option>
+                <option value="base.en">Base Original (142 MB)</option>
+            </select>
+        </div>
+        
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="audio-level" id="audioLevel" style="display: none;">
+            <div class="audio-level-bar" id="audioLevelBar"></div>
+        </div>
+        
+        <div class="controls">
+            <button id="loadBtn" class="btn-primary">Load Model</button>
+            <button id="startBtn" class="btn-secondary" disabled>Start Recording</button>
+            <button id="stopBtn" class="btn-danger" disabled>Stop Recording</button>
+        </div>
+        
+        <div class="transcription-box">
+            <div class="transcription-title">
+                <span>Transcription</span>
+                <button class="clear-btn" id="clearBtn">Clear</button>
+            </div>
+            <div id="transcription"></div>
+        </div>
+    </div>
+    
+    <!-- Load the bundled version which includes all workers inline -->
+    <script src="index.bundled.min.js"></script>
+    <script src="bundle.js"></script>
+</body>
+</html>

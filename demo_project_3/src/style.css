@@ -1,0 +1,264 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+}
+
+.container {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    max-width: 600px;
+    width: 90%;
+}
+
+h1 {
+    text-align: center;
+    color: #667eea;
+    margin-bottom: 10px;
+    font-size: 2.5em;
+}
+
+.subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+    font-size: 1.1em;
+}
+
+.status-bar {
+    background: #f7fafc;
+    border-radius: 10px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-text {
+    font-weight: 500;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #cbd5e0;
+    transition: all 0.3s ease;
+}
+
+.status-indicator.ready {
+    background: #48bb78;
+}
+
+.status-indicator.loading {
+    background: #ed8936;
+    animation: pulse 1.5s infinite;
+}
+
+.status-indicator.recording {
+    background: #e53e3e;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+button {
+    flex: 1;
+    padding: 15px 25px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 150px;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #5a67d8;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #cbd5e0;
+    transform: translateY(-2px);
+}
+
+.btn-danger {
+    background: #f56565;
+    color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: #e53e3e;
+    transform: translateY(-2px);
+}
+
+.model-selector {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #4a5568;
+}
+
+select {
+    width: 100%;
+    padding: 10px 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 16px;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.progress-bar {
+    background: #e2e8f0;
+    border-radius: 10px;
+    height: 8px;
+    margin-bottom: 30px;
+    overflow: hidden;
+    display: none;
+}
+
+.progress-bar.visible {
+    display: block;
+}
+
+.progress-fill {
+    background: #667eea;
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.transcription-box {
+    background: #f7fafc;
+    border-radius: 15px;
+    padding: 25px;
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.transcription-title {
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.clear-btn {
+    font-size: 14px;
+    padding: 5px 15px;
+    background: #e2e8f0;
+    color: #4a5568;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clear-btn:hover {
+    background: #cbd5e0;
+}
+
+#transcription {
+    line-height: 1.6;
+    color: #2d3748;
+    font-size: 16px;
+}
+
+#transcription:empty:before {
+    content: "Your transcription will appear here...";
+    color: #a0aec0;
+    font-style: italic;
+}
+
+.error-message {
+    background: #feb2b2;
+    color: #742a2a;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: none;
+}
+
+.error-message.visible {
+    display: block;
+}
+
+.info-box {
+    background: #bee3f8;
+    color: #2a4e7c;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.audio-level {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    margin: 10px 0;
+    overflow: hidden;
+}
+
+.audio-level-bar {
+    height: 100%;
+    background: #48bb78;
+    width: 0%;
+    transition: width 0.1s ease;
+}
