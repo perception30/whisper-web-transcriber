@@ -26,13 +26,6 @@ Or using yarn:
 yarn add whisper-web-transcriber
 ```
 
-Or use directly from CDN:
-
-```html
-<script type="module">
-  import { WhisperTranscriber } from 'https://unpkg.com/whisper-web-transcriber/dist/index.esm.js';
-</script>
-```
 
 ## Quick Start
 
@@ -153,96 +146,84 @@ add_header Cross-Origin-Opener-Policy "same-origin" always;
 
 ## Example HTML
 
-### Using with npm/bundler:
+**Important:** When using the npm package, you need to serve your HTML file through a local web server (not `file://`). You can use:
+- `python3 -m http.server 8080`
+- `npx serve`
+- Any other local web server
 
 ```html
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <title>Whisper Transcriber Demo</title>
+  <!-- Important: Include this for SharedArrayBuffer support -->
+  <script src="node_modules/whisper-web-transcriber/dist/coi-serviceworker.js"></script>
 </head>
 <body>
   <button id="load">Load Model</button>
-  <button id="start" disabled>Start</button>
-  <button id="stop" disabled>Stop</button>
-  <div id="status"></div>
-  <div id="progress"></div>
-  <div id="transcription"></div>
+  <button id="start" disabled>Start Recording</button>
+  <button id="stop" disabled>Stop Recording</button>
+  
+  <div>
+    <strong>Status:</strong>
+    <div id="status">Ready to load model</div>
+  </div>
+  
+  <div>
+    <strong>Progress:</strong>
+    <div id="progress">-</div>
+  </div>
+  
+  <div>
+    <strong>Transcription:</strong>
+    <div id="transcription">Transcribed text will appear here...</div>
+  </div>
 
   <script type="module">
-    import { WhisperTranscriber } from 'whisper-web-transcriber';
+    // Import from your local node_modules
+    import { WhisperTranscriber } from './node_modules/whisper-web-transcriber/dist/index.esm.js';
 
     const transcriber = new WhisperTranscriber({
+      modelSize: 'tiny-en-q5_1', // Smallest model for quick testing
       onTranscription: (text) => {
-        document.getElementById('transcription').textContent += text + ' ';
+        const div = document.getElementById('transcription');
+        if (div.textContent === 'Transcribed text will appear here...') {
+          div.textContent = '';
+        }
+        div.textContent += text + ' ';
       },
       onProgress: (progress) => {
         document.getElementById('progress').textContent = progress + '%';
       },
       onStatus: (status) => {
         document.getElementById('status').textContent = status;
-      }
-    });
-
-    document.getElementById('load').onclick = async () => {
-      await transcriber.loadModel();
-      document.getElementById('start').disabled = false;
-    };
-
-    document.getElementById('start').onclick = async () => {
-      await transcriber.startRecording();
-      document.getElementById('start').disabled = true;
-      document.getElementById('stop').disabled = false;
-    };
-
-    document.getElementById('stop').onclick = () => {
-      transcriber.stopRecording();
-      document.getElementById('start').disabled = false;
-      document.getElementById('stop').disabled = true;
-    };
-  </script>
-</body>
-</html>
-```
-
-### Using from CDN (no build step required):
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Whisper Transcriber Demo</title>
-</head>
-<body>
-  <h1>Speech to Text Demo</h1>
-  <button id="load">Load Model</button>
-  <button id="start" disabled>Start Recording</button>
-  <button id="stop" disabled>Stop Recording</button>
-  <div id="status">Ready</div>
-  <div id="transcription"></div>
-
-  <script type="module">
-    import { WhisperTranscriber } from 'https://unpkg.com/whisper-web-transcriber/dist/index.esm.js';
-    
-    const transcriber = new WhisperTranscriber({
-      modelSize: 'tiny-en-q5_1', // Smallest model for quick loading
-      onTranscription: (text) => {
-        document.getElementById('transcription').textContent += text + ' ';
       },
-      onStatus: (status) => {
-        document.getElementById('status').textContent = status;
-      }
+      debug: true // Enable debug logs for troubleshooting
     });
 
     document.getElementById('load').onclick = async () => {
-      await transcriber.loadModel();
-      document.getElementById('start').disabled = false;
+      try {
+        document.getElementById('load').disabled = true;
+        await transcriber.loadModel();
+        document.getElementById('start').disabled = false;
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('status').textContent = 'Error: ' + error.message;
+        document.getElementById('load').disabled = false;
+      }
     };
 
     document.getElementById('start').onclick = async () => {
-      await transcriber.startRecording();
-      document.getElementById('start').disabled = true;
-      document.getElementById('stop').disabled = false;
+      try {
+        document.getElementById('start').disabled = true;
+        document.getElementById('transcription').textContent = 'Listening...';
+        await transcriber.startRecording();
+        document.getElementById('stop').disabled = false;
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('status').textContent = 'Error: ' + error.message;
+        document.getElementById('start').disabled = false;
+      }
     };
 
     document.getElementById('stop').onclick = () => {
@@ -254,6 +235,7 @@ add_header Cross-Origin-Opener-Policy "same-origin" always;
 </body>
 </html>
 ```
+
 
 ## Performance Considerations
 

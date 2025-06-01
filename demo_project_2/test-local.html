@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Local NPM Package</title>
+    <script src="node_modules/whisper-web-transcriber/dist/coi-serviceworker.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        #status, #transcription {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            min-height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Testing Local NPM Package</h1>
+    <p>This uses the locally installed npm package</p>
+    
+    <div>
+        <button id="load">Load Model</button>
+        <button id="start" disabled>Start Recording</button>
+        <button id="stop" disabled>Stop Recording</button>
+    </div>
+    
+    <div>
+        <strong>Status:</strong>
+        <div id="status">Ready to load model</div>
+    </div>
+    
+    <div>
+        <strong>Transcription:</strong>
+        <div id="transcription">Transcribed text will appear here...</div>
+    </div>
+
+    <script type="module">
+        import { WhisperTranscriber } from './node_modules/whisper-web-transcriber/dist/index.esm.js';
+        
+        console.log('Loading from local node_modules...');
+        
+        const transcriber = new WhisperTranscriber({
+            modelSize: 'tiny-en-q5_1',
+            onTranscription: (text) => {
+                console.log('Transcribed:', text);
+                const div = document.getElementById('transcription');
+                if (div.textContent === 'Transcribed text will appear here...') {
+                    div.textContent = '';
+                }
+                div.textContent += text + ' ';
+            },
+            onStatus: (status) => {
+                console.log('Status:', status);
+                document.getElementById('status').textContent = status;
+            },
+            debug: true
+        });
+        
+        document.getElementById('load').onclick = async () => {
+            try {
+                document.getElementById('load').disabled = true;
+                await transcriber.loadModel();
+                document.getElementById('start').disabled = false;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('status').textContent = 'Error: ' + error.message;
+                document.getElementById('load').disabled = false;
+            }
+        };
+        
+        document.getElementById('start').onclick = async () => {
+            try {
+                document.getElementById('start').disabled = true;
+                document.getElementById('transcription').textContent = '';
+                await transcriber.startRecording();
+                document.getElementById('stop').disabled = false;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('status').textContent = 'Error: ' + error.message;
+                document.getElementById('start').disabled = false;
+            }
+        };
+        
+        document.getElementById('stop').onclick = () => {
+            transcriber.stopRecording();
+            document.getElementById('start').disabled = false;
+            document.getElementById('stop').disabled = true;
+        };
+    </script>
+</body>
+</html>
