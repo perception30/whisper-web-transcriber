@@ -2,6 +2,8 @@
 
 Real-time audio transcription in the browser using OpenAI's Whisper model via WebAssembly. This package provides an easy-to-use API for integrating speech-to-text capabilities into web applications without any server-side processing.
 
+**[Live Demo](https://demo-p47mmoe2n-perception30s-projects.vercel.app)** 🎙️
+
 ## Features
 
 - 🎙️ Real-time audio transcription from microphone
