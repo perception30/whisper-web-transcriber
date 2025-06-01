@@ -1,6 +1,6 @@
 {
   "name": "whisper-web-transcriber",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Real-time audio transcription in the browser using OpenAI's Whisper model via WebAssembly",
   "type": "module",
   "main": "dist/index.js",
@@ -27,7 +27,7 @@
     "openai",
     "whisper.cpp"
   ],
-  "author": "",
+  "author": "Khaled Bin A Quadir",
   "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",
@@ -41,10 +41,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/whisper-web-transcriber.git"
+    "url": "https://github.com/perception30/whisper-web-transcriber.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/whisper-web-transcriber/issues"
+    "url": "https://github.com/perception30/whisper-web-transcriber/issues"
   },
-  "homepage": "https://github.com/yourusername/whisper-web-transcriber#readme"
+  "homepage": "https://github.com/perception30/whisper-web-transcriber#readme"
 }
