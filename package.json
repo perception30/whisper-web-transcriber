@@ -1,6 +1,6 @@
 {
   "name": "whisper-web-transcriber",
-  "version": "0.1.8",
+  "version": "0.2.1",
   "description": "Real-time audio transcription in the browser using OpenAI's Whisper model via WebAssembly",
   "type": "module",
   "main": "dist/index.js",
