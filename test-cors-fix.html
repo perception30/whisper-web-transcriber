@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test CORS Fix</title>
+</head>
+<body>
+    <h1>Testing CORS Fix</h1>
+    <button id="test">Test Load</button>
+    <div id="status"></div>
+    
+    <script type="module">
+        // Test loading from unpkg CDN
+        import { WhisperTranscriber } from 'https://unpkg.com/whisper-web-transcriber@0.1.6/dist/index.esm.js';
+        
+        document.getElementById('test').onclick = async () => {
+            try {
+                document.getElementById('status').textContent = 'Initializing...';
+                
+                const transcriber = new WhisperTranscriber({
+                    modelSize: 'tiny-en-q5_1',
+                    onStatus: (status) => {
+                        document.getElementById('status').textContent = status;
+                    },
+                    debug: true
+                });
+                
+                await transcriber.initialize();
+                document.getElementById('status').textContent = 'Successfully initialized! CORS fix working.';
+            } catch (error) {
+                document.getElementById('status').textContent = 'Error: ' + error.message;
+                console.error(error);
+            }
+        };
+    </script>
+</body>
+</html>

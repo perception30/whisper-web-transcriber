@@ -92,23 +92,22 @@ export class WhisperTranscriber {
 
   private async loadWasmModule(): Promise<void> {
     const basePath = this.getScriptBasePath();
-    const isCDN = basePath.includes('unpkg.com');
     
-    // If loading from CDN, pre-fetch the worker and create blob URL
-    if (isCDN) {
-      const workerUrl = basePath + 'libstream.worker.js';
-      try {
-        // Pre-fetch and convert worker to blob URL
-        const response = await fetch(workerUrl);
-        const workerCode = await response.text();
-        const blob = new Blob([workerCode], { type: 'application/javascript' });
-        const blobUrl = URL.createObjectURL(blob);
-        
-        // Store the blob URL for later use
-        (window as any).__whisperWorkerBlobUrl = blobUrl;
-      } catch (error) {
-        this.log('Failed to pre-fetch worker: ' + error);
-      }
+    // Always pre-fetch the worker and create blob URL to avoid CORS issues
+    const workerUrl = basePath + 'libstream.worker.js';
+    try {
+      // Pre-fetch and convert worker to blob URL
+      const response = await fetch(workerUrl);
+      const workerCode = await response.text();
+      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Store the blob URL for later use
+      (window as any).__whisperWorkerBlobUrl = blobUrl;
+      this.log('Worker script loaded and blob URL created');
+    } catch (error) {
+      this.log('Failed to pre-fetch worker: ' + error);
+      // Continue anyway, it might work with direct loading
     }
     
     // Load the WASM module dynamically
@@ -174,6 +173,31 @@ export class WhisperTranscriber {
     });
   }
 
+  private async loadCOIServiceWorker(): Promise<void> {
+    // Check if SharedArrayBuffer is already available
+    if (typeof SharedArrayBuffer !== 'undefined') {
+      this.log('SharedArrayBuffer already available');
+      return;
+    }
+
+    // Try to load coi-serviceworker.js
+    const basePath = this.getScriptBasePath();
+    const script = document.createElement('script');
+    script.src = basePath + 'coi-serviceworker.js';
+    
+    return new Promise((resolve) => {
+      script.onload = () => {
+        this.log('COI service worker loaded');
+        resolve();
+      };
+      script.onerror = () => {
+        this.log('Failed to load COI service worker - SharedArrayBuffer may not be available');
+        resolve(); // Continue anyway
+      };
+      document.head.appendChild(script);
+    });
+  }
+
   async initialize(): Promise<void> {
     if (this.initPromise) {
       return this.initPromise;
@@ -181,6 +205,9 @@ export class WhisperTranscriber {
 
     this.initPromise = (async () => {
       try {
+        // Try to load COI service worker first for SharedArrayBuffer support
+        await this.loadCOIServiceWorker();
+        
         // Set up global variables required by helpers.js
         (window as any).dbVersion = 1;
         (window as any).dbName = 'whisper.transcriber.models';
