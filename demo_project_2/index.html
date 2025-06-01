@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Test Whisper Web Transcriber v0.1.7</title>
+    <title>Test Local NPM Package</title>
+    <script src="node_modules/whisper-web-transcriber/dist/coi-serviceworker.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,22 +15,18 @@
             padding: 10px 20px;
             font-size: 16px;
         }
-        #status, #progress, #transcription {
+        #status, #transcription {
             margin: 10px 0;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 5px;
             min-height: 30px;
         }
-        #transcription {
-            background-color: #f5f5f5;
-            min-height: 100px;
-        }
     </style>
 </head>
 <body>
-    <h1>Testing Whisper Web Transcriber v0.1.7</h1>
-    <p>This test uses the CDN version to verify CORS fixes</p>
+    <h1>Testing Local NPM Package</h1>
+    <p>This uses the locally installed npm package</p>
     
     <div>
         <button id="load">Load Model</button>
@@ -43,23 +40,17 @@
     </div>
     
     <div>
-        <strong>Progress:</strong>
-        <div id="progress">-</div>
-    </div>
-    
-    <div>
         <strong>Transcription:</strong>
         <div id="transcription">Transcribed text will appear here...</div>
     </div>
 
     <script type="module">
-        // Using CDN version 0.1.7 with CORS fixes
-        import { WhisperTranscriber } from 'https://unpkg.com/whisper-web-transcriber@0.1.7/dist/index.esm.js';
+        import { WhisperTranscriber } from './node_modules/whisper-web-transcriber/dist/index.esm.js';
         
-        console.log('Loading Whisper Web Transcriber v0.1.7 from CDN...');
+        console.log('Loading from local node_modules...');
         
         const transcriber = new WhisperTranscriber({
-            modelSize: 'tiny-en-q5_1', // Smallest model for testing
+            modelSize: 'tiny-en-q5_1',
             onTranscription: (text) => {
                 console.log('Transcribed:', text);
                 const div = document.getElementById('transcription');
@@ -68,28 +59,20 @@
                 }
                 div.textContent += text + ' ';
             },
-            onProgress: (progress) => {
-                console.log('Progress:', progress);
-                document.getElementById('progress').textContent = progress + '%';
-            },
             onStatus: (status) => {
                 console.log('Status:', status);
                 document.getElementById('status').textContent = status;
             },
-            debug: true // Enable debug logging
+            debug: true
         });
         
         document.getElementById('load').onclick = async () => {
             try {
                 document.getElementById('load').disabled = true;
-                document.getElementById('status').textContent = 'Initializing...';
-                
                 await transcriber.loadModel();
-                
-                document.getElementById('status').textContent = 'Model loaded! Ready to record.';
                 document.getElementById('start').disabled = false;
             } catch (error) {
-                console.error('Error loading model:', error);
+                console.error('Error:', error);
                 document.getElementById('status').textContent = 'Error: ' + error.message;
                 document.getElementById('load').disabled = false;
             }
@@ -99,13 +82,10 @@
             try {
                 document.getElementById('start').disabled = true;
                 document.getElementById('transcription').textContent = '';
-                
                 await transcriber.startRecording();
-                
-                document.getElementById('status').textContent = 'Recording... Speak into your microphone';
                 document.getElementById('stop').disabled = false;
             } catch (error) {
-                console.error('Error starting recording:', error);
+                console.error('Error:', error);
                 document.getElementById('status').textContent = 'Error: ' + error.message;
                 document.getElementById('start').disabled = false;
             }
@@ -113,13 +93,9 @@
         
         document.getElementById('stop').onclick = () => {
             transcriber.stopRecording();
-            document.getElementById('status').textContent = 'Stopped. Click Start to record again.';
             document.getElementById('start').disabled = false;
             document.getElementById('stop').disabled = true;
         };
-        
-        // Log to console when page loads
-        console.log('Page loaded. Click "Load Model" to begin.');
     </script>
 </body>
 </html>
