@@ -1,0 +1,13 @@
+src/
+whisper.cpp/
+emsdk/
+*.html
+server.py
+rollup.config.js
+tsconfig.json
+.gitignore
+Dev.md
+node_modules/
+.DS_Store
+*.log
+.idea/*
