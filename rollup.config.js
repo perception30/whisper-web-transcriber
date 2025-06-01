@@ -3,8 +3,42 @@ import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import terser from '@rollup/plugin-terser';
 import copy from 'rollup-plugin-copy';
+import inlineWorkers from './rollup-plugin-inline-workers.js';
 
 export default [
+  // Bundled build with inlined workers (for CDN usage)
+  {
+    input: 'src/index.ts',
+    output: {
+      name: 'WhisperTranscriber',
+      file: 'dist/index.bundled.js',
+      format: 'umd',
+      exports: 'named'
+    },
+    plugins: [
+      inlineWorkers(),
+      resolve(),
+      commonjs(),
+      typescript({ tsconfig: './tsconfig.json' })
+    ]
+  },
+  // Minified bundled build with inlined workers
+  {
+    input: 'src/index.ts',
+    output: {
+      name: 'WhisperTranscriber',
+      file: 'dist/index.bundled.min.js',
+      format: 'umd',
+      exports: 'named'
+    },
+    plugins: [
+      inlineWorkers(),
+      resolve(),
+      commonjs(),
+      typescript({ tsconfig: './tsconfig.json' }),
+      terser()
+    ]
+  },
   // UMD build
   {
     input: 'src/index.ts',
