@@ -26,6 +26,14 @@ Or using yarn:
 yarn add whisper-web-transcriber
 ```
 
+Or use directly from CDN:
+
+```html
+<script type="module">
+  import { WhisperTranscriber } from 'https://unpkg.com/whisper-web-transcriber/dist/index.esm.js';
+</script>
+```
+
 ## Quick Start
 
 ```javascript
@@ -92,26 +100,60 @@ interface WhisperConfig {
 ## Browser Requirements
 
 - WebAssembly support
-- SharedArrayBuffer support
+- SharedArrayBuffer support (the library tries to enable this automatically)
 - Microphone access permission
 - Modern browser (Chrome 90+, Firefox 89+, Safari 15+, Edge 90+)
 
 ## CORS and Security Headers
 
-For SharedArrayBuffer support, your site needs specific headers:
+The library automatically handles CORS issues for Web Workers when loading from CDNs. However, for best performance and SharedArrayBuffer support, you should serve your site with these headers:
 
 ```
 Cross-Origin-Embedder-Policy: require-corp
 Cross-Origin-Opener-Policy: same-origin
 ```
 
-If you're using the included demo server:
+**Note:** The library includes a fallback mechanism that attempts to enable SharedArrayBuffer support even without these headers.
 
+### Serving with proper headers
+
+**For local development:**
 ```bash
 npm run demo
 ```
 
+**For production (examples):**
+
+Vercel (`vercel.json`):
+```json
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cross-Origin-Embedder-Policy",
+          "value": "require-corp"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy", 
+          "value": "same-origin"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Nginx:
+```nginx
+add_header Cross-Origin-Embedder-Policy "require-corp" always;
+add_header Cross-Origin-Opener-Policy "same-origin" always;
+```
+
 ## Example HTML
+
+### Using with npm/bundler:
 
 ```html
 <!DOCTYPE html>
@@ -136,6 +178,56 @@ npm run demo
       },
       onProgress: (progress) => {
         document.getElementById('progress').textContent = progress + '%';
+      },
+      onStatus: (status) => {
+        document.getElementById('status').textContent = status;
+      }
+    });
+
+    document.getElementById('load').onclick = async () => {
+      await transcriber.loadModel();
+      document.getElementById('start').disabled = false;
+    };
+
+    document.getElementById('start').onclick = async () => {
+      await transcriber.startRecording();
+      document.getElementById('start').disabled = true;
+      document.getElementById('stop').disabled = false;
+    };
+
+    document.getElementById('stop').onclick = () => {
+      transcriber.stopRecording();
+      document.getElementById('start').disabled = false;
+      document.getElementById('stop').disabled = true;
+    };
+  </script>
+</body>
+</html>
+```
+
+### Using from CDN (no build step required):
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Whisper Transcriber Demo</title>
+</head>
+<body>
+  <h1>Speech to Text Demo</h1>
+  <button id="load">Load Model</button>
+  <button id="start" disabled>Start Recording</button>
+  <button id="stop" disabled>Stop Recording</button>
+  <div id="status">Ready</div>
+  <div id="transcription"></div>
+
+  <script type="module">
+    import { WhisperTranscriber } from 'https://unpkg.com/whisper-web-transcriber/dist/index.esm.js';
+    
+    const transcriber = new WhisperTranscriber({
+      modelSize: 'tiny-en-q5_1', // Smallest model for quick loading
+      onTranscription: (text) => {
+        document.getElementById('transcription').textContent += text + ' ';
       },
       onStatus: (status) => {
         document.getElementById('status').textContent = status;
