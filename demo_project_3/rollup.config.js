@@ -46,7 +46,7 @@ export default {
     !production && serve({
       open: true,
       contentBase: 'dist',
-      host: '0.0.0.0',
+      host: 'localhost',
       port: 3000,
       headers: {
         'Cross-Origin-Embedder-Policy': 'require-corp',
