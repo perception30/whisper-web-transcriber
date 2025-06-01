@@ -5,3 +5,4 @@ emsdk/
 whisper.cpp/
 *.tgz
 test-package/
+.parcel-cache

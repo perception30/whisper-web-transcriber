@@ -15,10 +15,10 @@ export default function inlineWorkers() {
         // Create the injection code
         const injection = `
 // Inlined worker and helper files
-const LIBSTREAM_WORKER_CODE = ${JSON.stringify(workerCode)};
-const HELPERS_CODE = ${JSON.stringify(helpersCode)};
-const LIBSTREAM_CODE = ${JSON.stringify(libstreamCode)};
-const COI_SERVICEWORKER_CODE = ${JSON.stringify(coiServiceWorkerCode)};
+window.LIBSTREAM_WORKER_CODE = ${JSON.stringify(workerCode)};
+window.HELPERS_CODE = ${JSON.stringify(helpersCode)};
+window.LIBSTREAM_CODE = ${JSON.stringify(libstreamCode)};
+window.COI_SERVICEWORKER_CODE = ${JSON.stringify(coiServiceWorkerCode)};
 
 `;
         
