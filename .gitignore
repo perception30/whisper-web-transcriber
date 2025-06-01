@@ -1,3 +1,7 @@
 .idea/*
 node_modules/*
 dist/*
+emsdk/
+whisper.cpp/
+*.tgz
+test-package/
