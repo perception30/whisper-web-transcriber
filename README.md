@@ -16,45 +16,55 @@ Real-time audio transcription in the browser using OpenAI's Whisper model via We
 
 ## Installation
 
+### NPM Package
 ```bash
 npm install whisper-web-transcriber
 ```
 
 Or using yarn:
-
 ```bash
 yarn add whisper-web-transcriber
+```
+
+### CDN Usage (Bundled Version)
+```html
+<!-- Single file with all dependencies included -->
+<script src="https://unpkg.com/whisper-web-transcriber/dist/index.bundled.min.js"></script>
 ```
 
 
 ## Quick Start
 
+### Using NPM Package
 ```javascript
 import { WhisperTranscriber } from 'whisper-web-transcriber';
 
-// Create a new transcriber instance
 const transcriber = new WhisperTranscriber({
-  modelSize: 'base-en-q5_1', // or 'tiny.en', 'base.en', 'tiny-en-q5_1'
+  modelSize: 'base-en-q5_1',
   onTranscription: (text) => {
     console.log('Transcribed:', text);
-    document.getElementById('transcription').textContent += text + ' ';
-  },
-  onProgress: (progress) => {
-    console.log('Loading progress:', progress + '%');
-  },
-  onStatus: (status) => {
-    console.log('Status:', status);
   }
 });
 
-// Load the model (only needed once, cached in browser)
 await transcriber.loadModel();
-
-// Start recording
 await transcriber.startRecording();
+```
 
-// Stop recording
-transcriber.stopRecording();
+### Using CDN (Bundled Version)
+```html
+<script src="https://unpkg.com/whisper-web-transcriber/dist/index.bundled.min.js"></script>
+<script>
+  const transcriber = new WhisperTranscriber.WhisperTranscriber({
+    modelSize: 'base-en-q5_1',
+    onTranscription: (text) => {
+      console.log('Transcribed:', text);
+    }
+  });
+
+  transcriber.loadModel().then(() => {
+    transcriber.startRecording();
+  });
+</script>
 ```
 
 ## API Reference
@@ -80,6 +90,8 @@ interface WhisperConfig {
 - `startRecording(): Promise<void>` - Starts microphone recording and transcription
 - `stopRecording(): void` - Stops recording
 - `destroy(): void` - Cleanup resources
+- `getServiceWorkerCode(): string | null` - Returns the COI service worker code (bundled version only)
+- `getCrossOriginIsolationInstructions(): string` - Returns setup instructions for Cross-Origin Isolation
 
 ## Model Options
 
@@ -93,20 +105,42 @@ interface WhisperConfig {
 ## Browser Requirements
 
 - WebAssembly support
-- SharedArrayBuffer support (the library tries to enable this automatically)
+- SharedArrayBuffer support (requires Cross-Origin Isolation)
 - Microphone access permission
 - Modern browser (Chrome 90+, Firefox 89+, Safari 15+, Edge 90+)
 
-## CORS and Security Headers
+## Cross-Origin Isolation Setup
 
-The library automatically handles CORS issues for Web Workers when loading from CDNs. However, for best performance and SharedArrayBuffer support, you should serve your site with these headers:
+WhisperTranscriber requires SharedArrayBuffer, which needs Cross-Origin Isolation. You have two options:
 
+### Option 1: Server Headers (Recommended)
+Configure your server to send these headers:
 ```
 Cross-Origin-Embedder-Policy: require-corp
 Cross-Origin-Opener-Policy: same-origin
 ```
 
-**Note:** The library includes a fallback mechanism that attempts to enable SharedArrayBuffer support even without these headers.
+### Option 2: Service Worker
+If you can't modify server headers, use the included service worker:
+
+**For NPM users:**
+```html
+<!-- Include at the top of your HTML -->
+<script src="node_modules/whisper-web-transcriber/dist/coi-serviceworker.js"></script>
+```
+
+**For CDN users:**
+```javascript
+// Get the service worker code
+const transcriber = new WhisperTranscriber.WhisperTranscriber();
+const swCode = transcriber.getServiceWorkerCode();
+
+// Save swCode as 'coi-serviceworker.js' on YOUR domain
+// Then include it in your HTML:
+// <script src="/coi-serviceworker.js"></script>
+```
+
+**Important:** Service workers must be served from the same origin as your page. CDN users cannot directly use the service worker from unpkg.
 
 ### Serving with proper headers
 
@@ -144,92 +178,83 @@ add_header Cross-Origin-Embedder-Policy "require-corp" always;
 add_header Cross-Origin-Opener-Policy "same-origin" always;
 ```
 
-## Example HTML
+## Complete Examples
 
-**Important:** When using the npm package, you need to serve your HTML file through a local web server (not `file://`). You can use:
-- `python3 -m http.server 8080`
-- `npx serve`
-- Any other local web server
+### Example 1: Using NPM Package
 
 ```html
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <title>Whisper Transcriber Demo</title>
-  <!-- Important: Include this for SharedArrayBuffer support -->
+  <title>Whisper Transcriber - NPM Version</title>
+  <!-- Include service worker for Cross-Origin Isolation -->
   <script src="node_modules/whisper-web-transcriber/dist/coi-serviceworker.js"></script>
 </head>
 <body>
-  <button id="load">Load Model</button>
-  <button id="start" disabled>Start Recording</button>
-  <button id="stop" disabled>Stop Recording</button>
-  
-  <div>
-    <strong>Status:</strong>
-    <div id="status">Ready to load model</div>
-  </div>
-  
-  <div>
-    <strong>Progress:</strong>
-    <div id="progress">-</div>
-  </div>
-  
-  <div>
-    <strong>Transcription:</strong>
-    <div id="transcription">Transcribed text will appear here...</div>
-  </div>
+  <button id="start">Start Recording</button>
+  <button id="stop">Stop Recording</button>
+  <div id="transcription"></div>
 
   <script type="module">
-    // Import from your local node_modules
     import { WhisperTranscriber } from './node_modules/whisper-web-transcriber/dist/index.esm.js';
 
     const transcriber = new WhisperTranscriber({
-      modelSize: 'tiny-en-q5_1', // Smallest model for quick testing
+      modelSize: 'tiny-en-q5_1',
       onTranscription: (text) => {
-        const div = document.getElementById('transcription');
-        if (div.textContent === 'Transcribed text will appear here...') {
-          div.textContent = '';
-        }
-        div.textContent += text + ' ';
-      },
-      onProgress: (progress) => {
-        document.getElementById('progress').textContent = progress + '%';
-      },
-      onStatus: (status) => {
-        document.getElementById('status').textContent = status;
-      },
-      debug: true // Enable debug logs for troubleshooting
+        document.getElementById('transcription').textContent += text + ' ';
+      }
     });
 
-    document.getElementById('load').onclick = async () => {
-      try {
-        document.getElementById('load').disabled = true;
-        await transcriber.loadModel();
-        document.getElementById('start').disabled = false;
-      } catch (error) {
-        console.error('Error:', error);
-        document.getElementById('status').textContent = 'Error: ' + error.message;
-        document.getElementById('load').disabled = false;
-      }
-    };
-
     document.getElementById('start').onclick = async () => {
-      try {
-        document.getElementById('start').disabled = true;
-        document.getElementById('transcription').textContent = 'Listening...';
-        await transcriber.startRecording();
-        document.getElementById('stop').disabled = false;
-      } catch (error) {
-        console.error('Error:', error);
-        document.getElementById('status').textContent = 'Error: ' + error.message;
-        document.getElementById('start').disabled = false;
-      }
+      await transcriber.loadModel();
+      await transcriber.startRecording();
     };
 
     document.getElementById('stop').onclick = () => {
       transcriber.stopRecording();
-      document.getElementById('start').disabled = false;
-      document.getElementById('stop').disabled = true;
+    };
+  </script>
+</body>
+</html>
+```
+
+### Example 2: Using CDN (Bundled Version)
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Whisper Transcriber - CDN Version</title>
+  <!-- Note: You still need to handle Cross-Origin Isolation -->
+  <!-- Either configure server headers OR save and include the service worker -->
+</head>
+<body>
+  <button id="start">Start Recording</button>
+  <button id="stop">Stop Recording</button>
+  <div id="transcription"></div>
+
+  <!-- Single script include -->
+  <script src="https://unpkg.com/whisper-web-transcriber/dist/index.bundled.min.js"></script>
+  <script>
+    const transcriber = new WhisperTranscriber.WhisperTranscriber({
+      modelSize: 'tiny-en-q5_1',
+      onTranscription: (text) => {
+        document.getElementById('transcription').textContent += text + ' ';
+      }
+    });
+
+    // Check if Cross-Origin Isolation is enabled
+    if (!window.crossOriginIsolated) {
+      console.log(transcriber.getCrossOriginIsolationInstructions());
+    }
+
+    document.getElementById('start').onclick = async () => {
+      await transcriber.loadModel();
+      await transcriber.startRecording();
+    };
+
+    document.getElementById('stop').onclick = () => {
+      transcriber.stopRecording();
     };
   </script>
 </body>
@@ -237,12 +262,44 @@ add_header Cross-Origin-Opener-Policy "same-origin" always;
 ```
 
 
+## Bundled vs Standard Version
+
+### Bundled Version (`index.bundled.js`)
+- ✅ **Single file** - All workers and dependencies included
+- ✅ **CDN-friendly** - No CORS issues with web workers
+- ✅ **Zero configuration** - Works out of the box (except for Cross-Origin Isolation)
+- ❌ **Larger initial download** - ~220KB uncompressed, ~95KB minified
+- 📦 **Best for**: Quick prototypes, CDN usage, simple deployments
+
+### Standard Version (`index.js`)
+- ✅ **Smaller initial size** - Core library only
+- ✅ **Modular loading** - Workers loaded on demand
+- ❌ **Requires all files** - Must serve worker files from same origin
+- ❌ **More complex setup** - Need to copy files from node_modules
+- 📦 **Best for**: Production apps with bundlers, optimized loading
+
 ## Performance Considerations
 
 - Transcription is CPU-intensive
 - Larger models provide better accuracy but require more processing power
 - Quantized models (Q5_1) offer good balance between size and quality
 - First-time model loading may take time (models are cached afterward)
+
+## Troubleshooting
+
+### "SharedArrayBuffer is not defined"
+You need to enable Cross-Origin Isolation. See the [Cross-Origin Isolation Setup](#cross-origin-isolation-setup) section.
+
+### "Failed to load worker" when using CDN
+Use the bundled version (`index.bundled.min.js`) instead of the standard version.
+
+### "Microphone access denied"
+Ensure your site is served over HTTPS (or localhost) and the user has granted microphone permissions.
+
+### Service worker not working
+- Service workers must be served from the same origin as your page
+- Check browser console for specific error messages
+- Ensure the service worker file is accessible at the correct path
 
 ## Technical Details
 

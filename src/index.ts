@@ -59,23 +59,64 @@ export class WhisperTranscriber {
   
   private async registerServiceWorkerIfNeeded(): Promise<void> {
     // Check if we need COI and service worker is available
-    if (!window.crossOriginIsolated && 'serviceWorker' in navigator) {
-      try {
-        // Check if COI_SERVICEWORKER_CODE is available (inlined version)
-        if ((window as any).COI_SERVICEWORKER_CODE) {
-          this.log('Registering inlined COI service worker...');
-          const swBlob = new Blob([(window as any).COI_SERVICEWORKER_CODE], { type: 'application/javascript' });
-          const swUrl = URL.createObjectURL(swBlob);
-          await navigator.serviceWorker.register(swUrl);
-          this.log('COI service worker registered successfully');
-          
-          // Reload the page to activate the service worker
-          window.location.reload();
-        }
-      } catch (error) {
-        this.log('Failed to register COI service worker: ' + error);
+    if (!window.crossOriginIsolated) {
+      // For CDN usage, we cannot auto-register service workers due to same-origin policy
+      // Instead, provide instructions or helper method
+      if ((window as any).COI_SERVICEWORKER_CODE) {
+        console.warn(
+          '[WhisperTranscriber] SharedArrayBuffer is not available. ' +
+          'To enable it, you need to serve your site with COOP/COEP headers or use a service worker.\n' +
+          'You can get the service worker code by calling: transcriber.getServiceWorkerCode()'
+        );
       }
     }
+  }
+  
+  /**
+   * Returns the COI service worker code that users need to save and serve from their domain
+   */
+  public getServiceWorkerCode(): string | null {
+    if ((window as any).COI_SERVICEWORKER_CODE) {
+      return (window as any).COI_SERVICEWORKER_CODE;
+    }
+    return null;
+  }
+  
+  /**
+   * Helper to generate instructions for setting up Cross-Origin Isolation
+   */
+  public getCrossOriginIsolationInstructions(): string {
+    const swCode = this.getServiceWorkerCode();
+    if (!window.crossOriginIsolated) {
+      return `
+Cross-Origin Isolation Setup Required
+=====================================
+
+WhisperTranscriber requires SharedArrayBuffer, which needs Cross-Origin Isolation.
+
+Option 1: Server Headers (Recommended)
+--------------------------------------
+Configure your server to send these headers:
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Opener-Policy: same-origin
+
+Option 2: Service Worker
+------------------------
+1. Save the following code as 'coi-serviceworker.js' in your website root:
+
+${swCode ? '--- START SERVICE WORKER CODE ---\n' + swCode + '\n--- END SERVICE WORKER CODE ---' : '[Service worker code not available]'}
+
+2. Register the service worker by adding this to your HTML:
+   <script src="/coi-serviceworker.js"></script>
+
+3. Reload the page after registration.
+
+Current Status:
+- crossOriginIsolated: ${window.crossOriginIsolated}
+- SharedArrayBuffer available: ${typeof SharedArrayBuffer !== 'undefined'}
+      `.trim();
+    }
+    return 'Cross-Origin Isolation is already enabled! No action needed.';
   }
 
   private getScriptBasePath(): string {
