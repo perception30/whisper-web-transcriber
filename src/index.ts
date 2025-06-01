@@ -55,10 +55,25 @@ export class WhisperTranscriber {
   }
 
   private getScriptBasePath(): string {
-    // Try to detect if we're in development mode
-    if (window.location.hostname === 'localhost' && window.location.pathname.includes('/demo/')) {
-      return '../dist/';
+    // Check if we're running from node_modules
+    const scriptTags = document.getElementsByTagName('script');
+    for (let i = 0; i < scriptTags.length; i++) {
+      const src = scriptTags[i].src;
+      if (src.includes('whisper-web-transcriber')) {
+        const basePath = src.substring(0, src.lastIndexOf('/') + 1);
+        return basePath;
+      }
     }
+    
+    // Try to detect if we're in development mode
+    if (window.location.hostname === 'localhost') {
+      if (window.location.pathname.includes('/demo/')) {
+        return '../dist/';
+      }
+      // Check if loaded from node_modules
+      return '/node_modules/whisper-web-transcriber/dist/';
+    }
+    
     // Default to unpkg CDN for production
     return 'https://unpkg.com/whisper-web-transcriber/dist/';
   }
@@ -69,22 +84,41 @@ export class WhisperTranscriber {
     script.src = this.getScriptBasePath() + 'libstream.js';
     
     return new Promise((resolve, reject) => {
-      script.onload = () => {
-        // Wait for Module to be available
-        const checkModule = setInterval(() => {
-          if (typeof (window as any).Module !== 'undefined') {
-            clearInterval(checkModule);
-            this.Module = (window as any).Module;
-            this.log('WASM module loaded');
-            resolve();
-          }
-        }, 100);
-        
-        // Timeout after 10 seconds
-        setTimeout(() => {
-          clearInterval(checkModule);
-          reject(new Error('Timeout loading WASM module'));
-        }, 10000);
+      // Configure Module before the script loads
+      (window as any).Module = {
+        locateFile: (path: string) => {
+          return this.getScriptBasePath() + path;
+        },
+        onRuntimeInitialized: () => {
+          this.log('WASM runtime initialized');
+          // The runtime is initialized, we can resolve immediately
+          // The Module will set up the whisper functions
+          setTimeout(() => {
+            const module = (window as any).Module;
+            if (module) {
+              this.Module = module;
+              
+              // Set up the whisper functions if they don't exist
+              if (!module.init) {
+                module.init = module.cwrap('init', 'number', ['string']);
+              }
+              if (!module.set_audio) {
+                module.set_audio = module.cwrap('set_audio', '', ['number', 'array']);
+              }
+              if (!module.get_transcribed) {
+                module.get_transcribed = module.cwrap('get_transcribed', 'string', []);
+              }
+              if (!module.set_status) {
+                module.set_status = module.cwrap('set_status', '', ['string']);
+              }
+              
+              this.log('WASM module loaded and functions initialized');
+              resolve();
+            } else {
+              reject(new Error('Module not available after runtime initialized'));
+            }
+          }, 100);
+        }
       };
       
       script.onerror = () => reject(new Error('Failed to load WASM module'));
@@ -192,7 +226,9 @@ export class WhisperTranscriber {
 
     // Initialize whisper instance
     if (!this.instance) {
-      this.instance = this.Module.init('whisper.bin');
+      // Check if init function exists, otherwise use cwrap
+      const init = this.Module.init || this.Module.cwrap('init', 'number', ['string']);
+      this.instance = init('whisper.bin');
       if (!this.instance) {
         throw new Error('Failed to initialize Whisper');
       }
@@ -209,7 +245,8 @@ export class WhisperTranscriber {
       noiseSuppression: true,
     });
 
-    this.Module.set_status("");
+    const set_status = this.Module.set_status || this.Module.cwrap('set_status', '', ['string']);
+    set_status("");
     this.isRecording = true;
     this.config.onStatus('Recording...');
 
@@ -255,7 +292,8 @@ export class WhisperTranscriber {
               audioAll.set(this.audio, this.audio0 == null ? 0 : this.audio0.length);
               
               if (this.instance) {
-                this.Module.set_audio(this.instance, audioAll);
+                const set_audio = this.Module.set_audio || this.Module.cwrap('set_audio', '', ['number', 'array']);
+                set_audio(this.instance, audioAll);
               }
             });
           });
@@ -288,7 +326,8 @@ export class WhisperTranscriber {
         return;
       }
 
-      const transcribed = this.Module.get_transcribed();
+      const get_transcribed = this.Module.get_transcribed || this.Module.cwrap('get_transcribed', 'string', []);
+      const transcribed = get_transcribed();
       
       if (transcribed != null && transcribed.length > 1) {
         this.config.onTranscription(transcribed);
@@ -302,7 +341,8 @@ export class WhisperTranscriber {
       return;
     }
 
-    this.Module.set_status("paused");
+    const set_status = this.Module.set_status || this.Module.cwrap('set_status', '', ['string']);
+    set_status("paused");
     this.isRecording = false;
     this.audio0 = null;
     this.audio = null;

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisper Web Transcriber Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            margin: 10px 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #status, #progress, #transcription {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            min-height: 50px;
+        }
+        #status {
+            background-color: #f0f0f0;
+        }
+        #progress {
+            background-color: #e8f4f8;
+        }
+        #transcription {
+            background-color: #f8f8f8;
+            white-space: pre-wrap;
+        }
+        .info {
+            background-color: #fffbeb;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Whisper Web Transcriber Test</h1>
+    
+    <div class="info">
+        <p><strong>Instructions:</strong></p>
+        <ol>
+            <li>Click "Load Model" to download and initialize the Whisper model (cached after first load)</li>
+            <li>Click "Start Recording" to begin transcription</li>
+            <li>Speak into your microphone</li>
+            <li>Click "Stop Recording" when done</li>
+        </ol>
+    </div>
+    
+    <div>
+        <button id="load">Load Model</button>
+        <button id="start" disabled>Start Recording</button>
+        <button id="stop" disabled>Stop Recording</button>
+        <select id="modelSize">
+            <option value="tiny.en">tiny.en (75 MB)</option>
+            <option value="base.en">base.en (142 MB)</option>
+            <option value="tiny-en-q5_1">tiny-en-q5_1 (31 MB)</option>
+            <option value="base-en-q5_1" selected>base-en-q5_1 (57 MB)</option>
+        </select>
+    </div>
+    
+    <div>
+        <h3>Status:</h3>
+        <div id="status">Ready</div>
+    </div>
+    
+    <div>
+        <h3>Progress:</h3>
+        <div id="progress">-</div>
+    </div>
+    
+    <div>
+        <h3>Transcription:</h3>
+        <div id="transcription"></div>
+    </div>
+
+    <script type="module">
+        import { WhisperTranscriber } from './node_modules/whisper-web-transcriber/dist/index.esm.js';
+        
+        let transcriber = null;
+        
+        function updateStatus(status) {
+            document.getElementById('status').textContent = status;
+            console.log('Status:', status);
+        }
+        
+        function updateProgress(progress) {
+            document.getElementById('progress').textContent = `${progress}%`;
+            console.log('Progress:', progress + '%');
+        }
+        
+        function addTranscription(text) {
+            const transcriptionDiv = document.getElementById('transcription');
+            transcriptionDiv.textContent += text + ' ';
+            console.log('Transcribed:', text);
+        }
+        
+        document.getElementById('load').onclick = async () => {
+            try {
+                updateStatus('Initializing transcriber...');
+                document.getElementById('load').disabled = true;
+                
+                const modelSize = document.getElementById('modelSize').value;
+                
+                transcriber = new WhisperTranscriber({
+                    modelSize: modelSize,
+                    onTranscription: addTranscription,
+                    onProgress: updateProgress,
+                    onStatus: updateStatus,
+                    debug: true
+                });
+                
+                updateStatus('Loading model...');
+                await transcriber.loadModel();
+                
+                updateStatus('Model loaded successfully!');
+                document.getElementById('start').disabled = false;
+                document.getElementById('modelSize').disabled = true;
+            } catch (error) {
+                console.error('Error loading model:', error);
+                updateStatus('Error: ' + error.message);
+                document.getElementById('load').disabled = false;
+            }
+        };
+        
+        document.getElementById('start').onclick = async () => {
+            try {
+                updateStatus('Starting recording...');
+                document.getElementById('start').disabled = true;
+                
+                await transcriber.startRecording();
+                
+                updateStatus('Recording... Speak into your microphone');
+                document.getElementById('stop').disabled = false;
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                updateStatus('Error: ' + error.message);
+                document.getElementById('start').disabled = false;
+            }
+        };
+        
+        document.getElementById('stop').onclick = () => {
+            try {
+                transcriber.stopRecording();
+                updateStatus('Recording stopped');
+                document.getElementById('start').disabled = false;
+                document.getElementById('stop').disabled = true;
+            } catch (error) {
+                console.error('Error stopping recording:', error);
+                updateStatus('Error: ' + error.message);
+            }
+        };
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (transcriber) {
+                transcriber.destroy();
+            }
+        });
+    </script>
+</body>
+</html>
