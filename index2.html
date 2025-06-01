@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Audio Transcriber</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        #start-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        #start-btn:hover:not(:disabled) {
+            background-color: #45a049;
+        }
+        
+        #stop-btn {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        #stop-btn:hover:not(:disabled) {
+            background-color: #da190b;
+        }
+        
+        .model-selection {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .model-selection select {
+            padding: 8px 16px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+        
+        .status {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 6px;
+            background-color: #f0f0f0;
+        }
+        
+        .status.recording {
+            background-color: #ffe6e6;
+            color: #c00;
+        }
+        
+        .status.loading {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .transcription-area {
+            min-height: 200px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #fafafa;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        .transcription-area:empty::before {
+            content: "Transcription will appear here...";
+            color: #999;
+            font-style: italic;
+        }
+        
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .loader.active {
+            display: block;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .debug-area {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 6px;
+            display: none;
+        }
+        
+        .debug-area.show {
+            display: block;
+        }
+        
+        .debug-toggle {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        #debug-output {
+            width: 100%;
+            height: 150px;
+            font-family: monospace;
+            font-size: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+        }
+    </style>
+    <script src="coi-serviceworker.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Real-time Audio Transcriber</h1>
+        
+        <div class="model-selection">
+            <label for="model-select">Select Model:</label>
+            <select id="model-select">
+                <option value="tiny.en">Tiny English (75 MB)</option>
+                <option value="base.en">Base English (142 MB)</option>
+                <option value="tiny-en-q5_1">Tiny English Q5_1 (31 MB)</option>
+                <option value="base-en-q5_1" selected>Base English Q5_1 (57 MB)</option>
+            </select>
+            <button id="load-model-btn" onclick="loadSelectedModel()" disabled>Load Model</button>
+        </div>
+        
+        <div class="loader" id="model-loader">
+            <p>Loading model...</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <span id="progress-text">0%</span>
+        </div>
+        
+        <div class="status" id="status">
+            <span id="status-text">Initializing WebAssembly...</span>
+        </div>
+        
+        <div class="controls">
+            <button id="start-btn" onclick="onStart()" disabled>Start Recording</button>
+            <button id="stop-btn" onclick="onStop()" disabled>Stop Recording</button>
+            <button id="clear-btn" onclick="clearTranscription()">Clear Text</button>
+        </div>
+        
+        <div class="transcription-area" id="transcription"></div>
+        
+        <div class="debug-toggle">
+            <button onclick="toggleDebug()">Toggle Debug Output</button>
+        </div>
+        
+        <div class="debug-area" id="debug-area">
+            <h3>Debug Output:</h3>
+            <textarea id="debug-output" readonly></textarea>
+        </div>
+    </div>
+    
+    <script src="helpers.js"></script>
+    <script src="libstream.js"></script>
+    <script>
+        // Global variables
+        let instance = null;
+        let model_whisper = null;
+        let mediaRecorder = null;
+        let audio = null;
+        let audio0 = null;
+        let context = null;
+        let doRecording = false;
+        let transcribedAll = '';
+        let nLines = 0;
+        let intervalUpdate = null;
+        
+        const kSampleRate = 16000;
+        const kIntervalAudio_ms = 5000;
+        
+        // IndexedDB variables for model caching
+        let dbVersion = 1;
+        let dbName = 'whisper.transcriber.models';
+        let indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+        
+        // Debug log function
+        function debugLog(message) {
+            const debugOutput = document.getElementById('debug-output');
+            if (debugOutput) {
+                debugOutput.value += message + '\n';
+                debugOutput.scrollTop = debugOutput.scrollHeight;
+            }
+        }
+        
+        // Update status
+        function updateStatus(text, type) {
+            const statusEl = document.getElementById('status');
+            const statusText = document.getElementById('status-text');
+            
+            statusText.textContent = text;
+            statusEl.className = 'status ' + (type || 'normal');
+        }
+        
+        // Update progress
+        function updateProgress(percent) {
+            document.getElementById('progress-fill').style.width = percent + '%';
+            document.getElementById('progress-text').textContent = percent + '%';
+        }
+        
+        // Toggle debug output
+        function toggleDebug() {
+            document.getElementById('debug-area').classList.toggle('show');
+        }
+        
+        // Clear transcription
+        function clearTranscription() {
+            document.getElementById('transcription').innerHTML = '';
+            transcribedAll = '';
+            nLines = 0;
+        }
+        
+        // Store model in WASM filesystem
+        function storeFS(fname, buf) {
+            // Write to WASM file using FS_createDataFile
+            // if the file exists, delete it
+            try {
+                Module.FS_unlink(fname);
+            } catch (e) {
+                // ignore
+            }
+            
+            Module.FS_createDataFile("/", fname, buf, true, true);
+            
+            debugLog('storeFS: stored model: ' + fname + ' size: ' + buf.length);
+            updateStatus('Model loaded successfully', 'normal');
+            
+            modelStatusElement.innerHTML = 'loaded "' + model_whisper + '"!';
+            
+            if (model_whisper != null) {
+                document.getElementById('start-btn').disabled = false;
+                document.getElementById('stop-btn').disabled = true;
+            }
+            
+            document.getElementById('model-loader').classList.remove('active');
+        }
+        
+        // Load selected model
+        async function loadSelectedModel() {
+            const modelSelect = document.getElementById('model-select');
+            const modelName = modelSelect.value;
+            
+            document.getElementById('load-model-btn').disabled = true;
+            document.getElementById('model-loader').classList.add('active');
+            updateStatus('Loading model...', 'loading');
+            
+            loadWhisper(modelName);
+        }
+        
+        // Load Whisper model
+        function loadWhisper(model) {
+            let urls = {
+                'tiny.en': 'https://whisper.ggerganov.com/ggml-model-whisper-tiny.en.bin',
+                'base.en': 'https://whisper.ggerganov.com/ggml-model-whisper-base.en.bin',
+                'tiny-en-q5_1': 'https://whisper.ggerganov.com/ggml-model-whisper-tiny.en-q5_1.bin',
+                'base-en-q5_1': 'https://whisper.ggerganov.com/ggml-model-whisper-base.en-q5_1.bin',
+            };
+            
+            let sizes = {
+                'tiny.en': 75,
+                'base.en': 142,
+                'tiny-en-q5_1': 31,
+                'base-en-q5_1': 57,
+            };
+            
+            let url = urls[model];
+            let dst = 'whisper.bin';
+            let size_mb = sizes[model];
+            
+            model_whisper = model;
+            
+            updateStatus('loading "' + model + '" ... ', 'loading');
+            
+            const cbProgress = function(p) {
+                updateProgress(Math.round(100 * p));
+            };
+            
+            const cbCancel = function() {
+                updateStatus('Model loading cancelled', 'normal');
+                document.getElementById('model-loader').classList.remove('active');
+                document.getElementById('load-model-btn').disabled = false;
+            };
+            
+            loadRemote(url, dst, size_mb, cbProgress, storeFS, cbCancel, debugLog);
+        }
+        
+        // Start recording
+        function startRecording() {
+            if (!context) {
+                context = new AudioContext({
+                    sampleRate: kSampleRate,
+                    channelCount: 1,
+                    echoCancellation: false,
+                    autoGainControl: true,
+                    noiseSuppression: true,
+                });
+            }
+            
+            Module.set_status("");
+            
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('stop-btn').disabled = false;
+            updateStatus('Recording...', 'recording');
+            
+            doRecording = true;
+            var startTime = Date.now();
+            
+            var chunks = [];
+            var stream = null;
+            
+            navigator.mediaDevices.getUserMedia({audio: true, video: false})
+                .then(function(s) {
+                    stream = s;
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.ondataavailable = function(e) {
+                        chunks.push(e.data);
+                        
+                        var blob = new Blob(chunks, { 'type' : 'audio/ogg; codecs=opus' });
+                        var reader = new FileReader();
+                        
+                        reader.onload = function(event) {
+                            var buf = new Uint8Array(reader.result);
+                            
+                            if (!context) {
+                                return;
+                            }
+                            context.decodeAudioData(buf.buffer, function(audioBuffer) {
+                                var offlineContext = new OfflineAudioContext(audioBuffer.numberOfChannels, audioBuffer.length, audioBuffer.sampleRate);
+                                var source = offlineContext.createBufferSource();
+                                source.buffer = audioBuffer;
+                                source.connect(offlineContext.destination);
+                                source.start(0);
+                                
+                                offlineContext.startRendering().then(function(renderedBuffer) {
+                                    audio = renderedBuffer.getChannelData(0);
+                                    
+                                    //debugLog('js: audio recorded, size: ' + audio.length + ', old size: ' + (audio0 == null ? 0 : audio0.length));
+                                    
+                                    var audioAll = new Float32Array(audio0 == null ? audio.length : audio0.length + audio.length);
+                                    if (audio0 != null) {
+                                        audioAll.set(audio0, 0);
+                                    }
+                                    audioAll.set(audio, audio0 == null ? 0 : audio0.length);
+                                    
+                                    if (instance) {
+                                        Module.set_audio(instance, audioAll);
+                                    }
+                                });
+                            }, function(e) {
+                                audio = null;
+                            });
+                        }
+                        
+                        reader.readAsArrayBuffer(blob);
+                    };
+                    
+                    mediaRecorder.onstop = function(e) {
+                        if (doRecording) {
+                            setTimeout(function() {
+                                startRecording();
+                            });
+                        }
+                    };
+                    
+                    mediaRecorder.start(kIntervalAudio_ms);
+                })
+                .catch(function(err) {
+                    debugLog('js: error getting audio stream: ' + err);
+                    updateStatus('Error: ' + err.message, 'error');
+                });
+            
+            var interval = setInterval(function() {
+                if (!doRecording) {
+                    clearInterval(interval);
+                    mediaRecorder.stop();
+                    stream.getTracks().forEach(function(track) {
+                        track.stop();
+                    });
+                    
+                    document.getElementById('start-btn').disabled = false;
+                    document.getElementById('stop-btn').disabled = true;
+                    
+                    mediaRecorder = null;
+                }
+            }, 100);
+        }
+        
+        // Stop recording
+        function stopRecording() {
+            Module.set_status("paused");
+            doRecording = false;
+            audio0 = null;
+            audio = null;
+            context = null;
+        }
+        
+        // Start transcription
+        function onStart() {
+            if (!instance) {
+                instance = Module.init('whisper.bin');
+                
+                if (instance) {
+                    debugLog("js: whisper initialized, instance: " + instance);
+                }
+            }
+            
+            if (!instance) {
+                debugLog("js: failed to initialize whisper");
+                return;
+            }
+            
+            startRecording();
+            
+            intervalUpdate = setInterval(function() {
+                var transcribed = Module.get_transcribed();
+                
+                if (transcribed != null && transcribed.length > 1) {
+                    transcribedAll += transcribed + '<br>';
+                    nLines++;
+                    
+                    // if more than 10 lines, remove the first line
+                    if (nLines > 10) {
+                        var i = transcribedAll.indexOf('<br>');
+                        if (i > 0) {
+                            transcribedAll = transcribedAll.substring(i + 4);
+                            nLines--;
+                        }
+                    }
+                }
+                
+                document.getElementById('transcription').innerHTML = transcribedAll;
+            }, 100);
+        }
+        
+        // Stop transcription
+        function onStop() {
+            stopRecording();
+            updateStatus('Stopped', 'normal');
+            
+            if (intervalUpdate) {
+                clearInterval(intervalUpdate);
+                intervalUpdate = null;
+            }
+        }
+        
+        // Create a dummy element reference for model status
+        var modelStatusElement = { innerHTML: '' };
+        
+        // Wait for Module to be ready
+        window.addEventListener('load', function() {
+            // Check if Module is loaded
+            if (typeof Module !== 'undefined') {
+                debugLog('Module is loaded');
+                updateStatus('Ready to load model', 'normal');
+                document.getElementById('load-model-btn').disabled = false;
+            } else {
+                debugLog('Module not found');
+                updateStatus('Error: WebAssembly module not loaded', 'error');
+            }
+        });
+    </script>
+</body>
+</html>
