@@ -1,6 +1,6 @@
 {
   "name": "whisper-web-transcriber",
-  "version": "0.2.2",
+  "version": "0.2.5",
   "description": "Real-time audio transcription in the browser using OpenAI's Whisper model via WebAssembly",
   "type": "module",
   "main": "dist/index.js",
@@ -53,8 +53,5 @@
   "bugs": {
     "url": "https://github.com/perception30/whisper-web-transcriber/issues"
   },
-  "homepage": "https://github.com/perception30/whisper-web-transcriber#readme",
-  "dependencies": {
-    "whisper-web-transcriber": "^0.1.7"
-  }
+  "homepage": "https://github.com/perception30/whisper-web-transcriber#readme"
 }

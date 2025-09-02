@@ -22,10 +22,10 @@ export class WhisperTranscriber {
   private initPromise: Promise<void> | null = null;
 
   private static readonly MODEL_URLS = {
-    'tiny.en': 'https://whisper.ggerganov.com/ggml-model-whisper-tiny.en.bin',
-    'base.en': 'https://whisper.ggerganov.com/ggml-model-whisper-base.en.bin',
-    'tiny-en-q5_1': 'https://whisper.ggerganov.com/ggml-model-whisper-tiny.en-q5_1.bin',
-    'base-en-q5_1': 'https://whisper.ggerganov.com/ggml-model-whisper-base.en-q5_1.bin',
+    'tiny.en': 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin',
+    'base.en': 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin',
+    'tiny-en-q5_1': 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en-q5_1.bin',
+    'base-en-q5_1': 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en-q5_1.bin',
   };
 
   private static readonly MODEL_SIZES = {
